@@ -1,0 +1,110 @@
+:root {
+  --brand-blue: #1a3a6b;
+  --brand-red:  #c0392b;
+  --green:      #198754;
+}
+
+* { box-sizing: border-box; }
+body { font-family: 'Segoe UI', sans-serif; background: #f1f3f6; min-height: 100vh; }
+
+/* ── HEADER ── */
+.team-header {
+  background: var(--brand-blue);
+  padding: 14px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.header-logo { display: flex; align-items: center; }
+.header-logo-img {
+  height: 36px;
+  width: auto;
+  filter: brightness(0) invert(1);
+}
+
+/* ── SESSION CARD ── */
+.session-card {
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  padding: 22px 24px;
+  margin-bottom: 20px;
+  border-left: 5px solid #dee2e6;
+  transition: border-color .2s;
+}
+.session-card.status-submitted { border-left-color: var(--green); }
+.session-card.status-pending   { border-left-color: #ffc107; }
+
+.session-week {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: #6c757d;
+}
+.session-title  { font-size: 18px; font-weight: 800; color: #1a2a45; }
+.session-detail { font-size: 13px; color: #555; }
+
+/* ── STATUS PILL ── */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 13px;
+}
+.status-pill.submitted { background: #d1e7dd; color: #0a4a2d; }
+.status-pill.pending   { background: #fff3cd; color: #856404; }
+
+/* ── UPLOAD AREA ── */
+.upload-area {
+  border: 2px dashed #adb5bd;
+  border-radius: 12px;
+  padding: 28px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  background: #f8f9fa;
+}
+.upload-area:hover, .upload-area.drag-over {
+  border-color: var(--brand-blue);
+  background: #e8eeff;
+}
+
+/* ── FILE PREVIEW ── */
+.file-thumb {
+  width: 80px; height: 80px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 2px solid #dee2e6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f8f9fa;
+  position: relative;
+  font-size: 11px;
+  color: #555;
+  text-align: center;
+}
+.file-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.file-thumb .remove-file {
+  position: absolute; top: 2px; right: 2px;
+  background: rgba(0,0,0,.5); color: #fff;
+  border-radius: 50%; width: 18px; height: 18px;
+  font-size: 11px; line-height: 18px; text-align: center;
+  cursor: pointer;
+}
+
+/* ── GALLERY ── */
+.sub-gallery { display: flex; flex-wrap: wrap; gap: 12px; }
+.sub-thumb {
+  width: 120px; height: 120px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #dee2e6;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: #f8f9fa;
+}
+.sub-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.sub-thumb .pdf-icon { font-size: 36px; color: var(--brand-red); }

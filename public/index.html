@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ENGECOM — Gestão DSSMAC</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <img src="/img/logo.png" alt="ENGECOM" class="sidebar-logo-img">
+    </div>
+    <p class="sidebar-subtitle">Gestão DSSMAC</p>
+    <ul class="sidebar-nav">
+      <li class="nav-item active" data-view="dashboard"><i class="bi bi-grid-1x2-fill"></i> Dashboard</li>
+      <li class="nav-item" data-view="sessions"><i class="bi bi-clipboard2-check-fill"></i> Treinamentos</li>
+      <li class="nav-item" data-view="teams"><i class="bi bi-people-fill"></i> Equipes</li>
+      <li class="nav-item" data-view="employees"><i class="bi bi-person-badge-fill"></i> Funcionários</li>
+      <li class="nav-item" data-view="links"><i class="bi bi-link-45deg"></i> Links Equipes</li>
+    </ul>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main-content">
+    <div id="view"></div>
+  </main>
+</div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Session Modal -->
+<div class="modal fade" id="modalSession" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalSessionTitle">Novo Treinamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="sessionId">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-bold">Título</label>
+            <input class="form-control" id="sessionTitle" value="DSSMAC" placeholder="DSSMAC">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Semana</label>
+            <input class="form-control" id="sessionWeek" placeholder="02">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label fw-bold">Mês/Ano</label>
+            <input class="form-control" id="sessionMonthYear" placeholder="Janeiro 2026">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Data</label>
+            <input type="date" class="form-control" id="sessionDate">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Início</label>
+            <input type="time" class="form-control" id="sessionTimeStart" value="07:00">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Término</label>
+            <input type="time" class="form-control" id="sessionTimeEnd" value="07:30">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Descrição</label>
+            <textarea class="form-control" id="sessionDescription" rows="3"
+              placeholder="Biodiversidade e fauna na mina: Atenção ao período chuvoso..."></textarea>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label fw-bold">Carga Horária</label>
+            <input class="form-control" id="sessionWorkload" value="00h 30m">
+          </div>
+          <div class="col-md-8">
+            <label class="form-label fw-bold">OBRA E VALE</label>
+            <input class="form-control" id="sessionObraVale" value="11 5900130281">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveSession()"><i class="bi bi-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Assign Teams Modal -->
+<div class="modal fade" id="modalAssign" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Atribuir Equipes ao Treinamento</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="assignBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveAssignments()"><i class="bi bi-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Team Modal -->
+<div class="modal fade" id="modalTeam" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalTeamTitle">Nova Equipe</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="teamId">
+        <div class="mb-3">
+          <label class="form-label fw-bold">Distrito</label>
+          <select class="form-select" id="teamDistrict"></select>
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Nome da Equipe</label>
+          <input class="form-control" id="teamName" placeholder="Ex: Terraplanagem">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Número da Equipe</label>
+          <input type="number" class="form-control" id="teamNumber" value="1" min="1">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-bold">Instrutor Padrão</label>
+          <input class="form-control" id="teamInstructor" placeholder="Nome do instrutor">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveTeam()"><i class="bi bi-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Employee Modal -->
+<div class="modal fade" id="modalEmployee" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalEmployeeTitle">Novo Funcionário</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="empId">
+        <div class="row g-3">
+          <div class="col-md-5">
+            <label class="form-label fw-bold">Matrícula</label>
+            <input class="form-control" id="empMatricula" placeholder="19363">
+          </div>
+          <div class="col-md-7">
+            <label class="form-label fw-bold">Empresa</label>
+            <input class="form-control" id="empCompany" value="ENGECOM">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Nome Completo</label>
+            <input class="form-control" id="empName" placeholder="NOME EM MAIÚSCULAS">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Função</label>
+            <input class="form-control" id="empFunction" placeholder="OPERADOR DE MÁQUINAS PESADAS">
+          </div>
+          <div class="col-12">
+            <label class="form-label fw-bold">Equipe</label>
+            <select class="form-select" id="empTeam"></select>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button class="btn btn-primary" onclick="saveEmployee()"><i class="bi bi-save"></i> Salvar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Submissions Modal -->
+<div class="modal fade" id="modalSubs" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Documentos Recebidos</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="subsBody"></div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/admin.js"></script>
+</body>
+</html>
