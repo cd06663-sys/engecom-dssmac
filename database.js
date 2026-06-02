@@ -1,9 +1,10 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
+const isExternal = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('.railway.internal');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
+  ssl: isExternal ? { rejectUnauthorized: false } : false,
 });
 
 async function initDB() {
