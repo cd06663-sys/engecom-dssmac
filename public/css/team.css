@@ -5,106 +5,112 @@
 }
 
 * { box-sizing: border-box; }
-body { font-family: 'Segoe UI', sans-serif; background: #f1f3f6; min-height: 100vh; }
+body { font-family: 'Segoe UI', sans-serif; background: #f1f3f6; min-height: 100vh; margin: 0; }
 
 /* ── HEADER ── */
 .team-header {
   background: var(--brand-blue);
-  padding: 14px 0;
+  padding: 16px 20px;
   box-shadow: 0 2px 8px rgba(0,0,0,.25);
 }
-.header-logo { display: flex; align-items: center; }
-.header-logo-img {
-  height: 36px;
-  width: auto;
-  filter: brightness(0) invert(1);
-}
+.header-logo-img { height: 32px; width: auto; filter: brightness(0) invert(1); }
+.team-name  { font-size: 20px; font-weight: 800; color: #fff; margin: 0; }
+.team-local { font-size: 13px; color: rgba(255,255,255,.65); margin: 0; }
 
-/* ── SESSION CARD ── */
-.session-card {
+/* ── LISTA CARD ── */
+.lista-card {
   background: #fff;
-  border-radius: 14px;
-  box-shadow: 0 2px 8px rgba(0,0,0,.08);
-  padding: 22px 24px;
-  margin-bottom: 20px;
-  border-left: 5px solid #dee2e6;
-  transition: border-color .2s;
+  border-radius: 16px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.07);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-left: 6px solid #dee2e6;
 }
-.session-card.status-submitted { border-left-color: var(--green); }
-.session-card.status-pending   { border-left-color: #ffc107; }
+.lista-card.status-submitted { border-left-color: var(--green); }
+.lista-card.status-pending   { border-left-color: #ffc107; }
 
-.session-week {
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .5px;
-  color: #6c757d;
-}
-.session-title  { font-size: 18px; font-weight: 800; color: #1a2a45; }
-.session-detail { font-size: 13px; color: #555; }
+.lista-card-body { padding: 20px 20px 16px; }
 
-/* ── STATUS PILL ── */
-.status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border-radius: 50px;
-  font-weight: 700;
-  font-size: 13px;
+.lista-num   { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; }
+.lista-title { font-size: 22px; font-weight: 800; color: #1a2a45; line-height: 1.2; margin: 4px 0 8px; }
+.lista-info  { font-size: 13px; color: #666; }
+
+.lista-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 14px; border-radius: 50px;
+  font-weight: 700; font-size: 13px;
 }
-.status-pill.submitted { background: #d1e7dd; color: #0a4a2d; }
-.status-pill.pending   { background: #fff3cd; color: #856404; }
+.lista-status.submitted { background: #d1e7dd; color: #0a4a2d; }
+.lista-status.pending   { background: #fff3cd; color: #856404; }
+
+/* ── BOTÕES AÇÃO ── */
+.lista-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  padding: 14px 20px 18px;
+  border-top: 1px solid #f1f3f6;
+  background: #fafafa;
+}
+.btn-baixar {
+  flex: 1; min-width: 140px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px; border-radius: 10px; font-weight: 600; font-size: 15px;
+  border: 2px solid #dee2e6; background: #fff; color: #1a2a45;
+  text-decoration: none; cursor: pointer;
+  transition: all .15s;
+}
+.btn-baixar:hover { border-color: #1a3a6b; background: #f0f4ff; color: #1a3a6b; }
+
+.btn-enviar {
+  flex: 1; min-width: 140px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px; border-radius: 10px; font-weight: 700; font-size: 15px;
+  border: none; cursor: pointer; transition: all .15s;
+}
+.btn-enviar.pending   { background: var(--green); color: #fff; }
+.btn-enviar.submitted { background: #e8f5e9; color: var(--green); border: 2px solid var(--green); }
+.btn-enviar:hover { opacity: .88; }
+
+.btn-ver {
+  display: flex; align-items: center; gap: 6px;
+  padding: 10px 16px; border-radius: 10px; font-size: 13px;
+  border: 1px solid #dee2e6; background: #fff; color: #555; cursor: pointer;
+}
+.btn-ver:hover { background: #f1f3f6; }
 
 /* ── UPLOAD AREA ── */
 .upload-area {
   border: 2px dashed #adb5bd;
-  border-radius: 12px;
-  padding: 28px;
-  text-align: center;
-  cursor: pointer;
-  transition: all .2s;
-  background: #f8f9fa;
+  border-radius: 12px; padding: 28px;
+  text-align: center; cursor: pointer;
+  background: #f8f9fa; transition: all .2s;
 }
-.upload-area:hover, .upload-area.drag-over {
-  border-color: var(--brand-blue);
-  background: #e8eeff;
-}
+.upload-area:hover, .upload-area.drag-over { border-color: var(--brand-blue); background: #e8eeff; }
 
 /* ── FILE PREVIEW ── */
 .file-thumb {
-  width: 80px; height: 80px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 2px solid #dee2e6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #f8f9fa;
-  position: relative;
-  font-size: 11px;
-  color: #555;
-  text-align: center;
+  width: 80px; height: 80px; border-radius: 8px; overflow: hidden;
+  border: 2px solid #dee2e6; display: flex; align-items: center;
+  justify-content: center; background: #f8f9fa; position: relative;
+  font-size: 11px; color: #555; text-align: center;
 }
 .file-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .file-thumb .remove-file {
   position: absolute; top: 2px; right: 2px;
   background: rgba(0,0,0,.5); color: #fff;
   border-radius: 50%; width: 18px; height: 18px;
-  font-size: 11px; line-height: 18px; text-align: center;
-  cursor: pointer;
+  font-size: 11px; line-height: 18px; text-align: center; cursor: pointer;
 }
 
 /* ── GALLERY ── */
 .sub-gallery { display: flex; flex-wrap: wrap; gap: 12px; }
 .sub-thumb {
-  width: 120px; height: 120px;
-  border-radius: 10px;
-  overflow: hidden;
-  border: 2px solid #dee2e6;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  background: #f8f9fa;
+  width: 120px; height: 120px; border-radius: 10px; overflow: hidden;
+  border: 2px solid #dee2e6; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; background: #f8f9fa;
 }
 .sub-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .sub-thumb .pdf-icon { font-size: 36px; color: var(--brand-red); }
+
+/* ── VAZIO ── */
+.empty-state { text-align: center; padding: 60px 20px; color: #aaa; }
+.empty-state i { font-size: 56px; display: block; margin-bottom: 16px; }
