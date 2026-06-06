@@ -69,10 +69,10 @@ async function renderDashboard() {
             const allSubmitted = total > 0 && t.pending === 0;
             const cls = allSubmitted ? 'has-submitted' : t.submitted > 0 ? 'has-submitted' : t.pending > 0 ? 'has-pending' : '';
             return `
-              <div class="team-card ${cls}">
+              <div class="team-card ${cls}" style="cursor:pointer;" onclick="window.open('/equipe/${t.id}','_blank')">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
-                    <div class="team-card-name">${t.name}</div>
+                    <div class="team-card-name">${t.name} <i class="bi bi-box-arrow-up-right" style="font-size:11px;color:#aaa;"></i></div>
                     <div class="team-card-sub">
                       <i class="bi bi-person-fill"></i> ${t.employees} funcionários
                     </div>
