@@ -1,99 +1,45 @@
 require('dotenv').config();
-const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 
-const isExternal = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('.railway.internal');
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: isExternal ? { rejectUnauthorized: false } : false,
-});
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS districts (
-      id   SERIAL PRIMARY KEY,
-      name TEXT NOT NULL,
-      city TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS teams (
-      id           SERIAL PRIMARY KEY,
-      name         TEXT NOT NULL,
-      district_id  INTEGER NOT NULL REFERENCES districts(id),
-      team_number  INTEGER NOT NULL DEFAULT 1,
-      instructor   TEXT
-    );
-    CREATE TABLE IF NOT EXISTS employees (
-      id        SERIAL PRIMARY KEY,
-      matricula TEXT,
-      name      TEXT NOT NULL,
-      function  TEXT,
-      company   TEXT DEFAULT 'ENGECOM',
-      team_id   INTEGER REFERENCES teams(id),
-      active    INTEGER DEFAULT 1
-    );
-    CREATE TABLE IF NOT EXISTS sessions (
-      id          SERIAL PRIMARY KEY,
-      title       TEXT NOT NULL,
-      week        TEXT,
-      month_year  TEXT,
-      date        TEXT,
-      time_start  TEXT DEFAULT '07:00',
-      time_end    TEXT DEFAULT '07:30',
-      description TEXT,
-      workload    TEXT DEFAULT '00h 30m',
-      obra_vale   TEXT DEFAULT '11 5900130281',
-      created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS assignments (
-      id              SERIAL PRIMARY KEY,
-      session_id      INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-      team_id         INTEGER NOT NULL REFERENCES teams(id),
-      instructor_name TEXT,
-      status          TEXT DEFAULT 'pending',
-      pdf_path        TEXT,
-      submitted_at    TIMESTAMP
-    );
-    CREATE TABLE IF NOT EXISTS submissions (
-      id            SERIAL PRIMARY KEY,
-      assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-      file_path     TEXT NOT NULL,
-      original_name TEXT,
-      uploaded_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  const { count } = await supabase.from('districts').select('*', { count: 'exact', head: true });
+  if (count > 0) return;
 
-  const { rows: [{ c }] } = await pool.query('SELECT COUNT(*)::int AS c FROM districts');
-  if (c > 0) return;
+  const ins = async (table, data) => {
+    const { data: row } = await supabase.from(table).insert(data).select('id').single();
+    return row.id;
+  };
 
-  const ins = async (text, values) =>
-    (await pool.query(text + ' RETURNING id', values)).rows[0].id;
+  const pdId = await ins('districts', { name: 'Parauapebas',       city: 'PARAUAPEBAS - PA' });
+  const cdId = await ins('districts', { name: 'Canaã dos Carajás', city: 'CANAÃ DOS CARAJÁS - PA' });
+  const mdId = await ins('districts', { name: 'Marabá',            city: 'MARABÁ - PA' });
 
-  const pdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Parauapebas', 'PARAUAPEBAS - PA']);
-  const cdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Canaã dos Carajás', 'CANAÃ DOS CARAJÁS - PA']);
-  const mdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Marabá', 'MARABÁ - PA']);
-
-  const team = (n, d, num, inst) =>
-    ins('INSERT INTO teams (name, district_id, team_number, instructor) VALUES ($1, $2, $3, $4)', [n, d, num, inst || null]);
+  const team = (name, district_id, team_number, instructor) =>
+    ins('teams', { name, district_id, team_number, instructor: instructor || null });
 
   const pT1 = await team('Terraplanagem', pdId, 1, 'RILDO MONTEIRO DA SILVA');
   const pT2 = await team('Prevenção',     pdId, 2, 'RAIANE PEREIRA DA SILVA');
-  await team('Corretiva',     pdId, 3, null);
+  const pT3 = await team('Corretiva',     pdId, 3, null);
   const cT1 = await team('Terraplanagem', cdId, 1, 'PATRICK DE MENDONÇA GONÇALVES');
   const cT2 = await team('Corretiva',     cdId, 2, 'DANIEL PEREIRA CAMPELO DA SILVA');
   const cT3 = await team('Prevenção',     cdId, 3, 'MICHELY VIEIRA PEREIRA');
-  await team('Terraplanagem', mdId, 1, null);
-  await team('Corretiva',     mdId, 2, null);
+  const mT1 = await team('Terraplanagem', mdId, 1, null);
+  const mT2 = await team('Corretiva',     mdId, 2, null);
   const mT3 = await team('Prevenção',     mdId, 3, 'DANIELA FERREIRA MORAES MATOS');
 
-  const emp = async (list, teamId) => {
-    for (const [m, n, f] of list) {
-      await pool.query(
-        'INSERT INTO employees (matricula, name, function, company, team_id) VALUES ($1, $2, $3, $4, $5)',
-        [m, n, f, 'ENGECOM', teamId]
-      );
-    }
+  const emps = async (list, team_id) => {
+    const rows = list.map(([matricula, name, func]) =>
+      ({ matricula, name, function: func, company: 'ENGECOM', team_id })
+    );
+    await supabase.from('employees').insert(rows);
   };
 
-  await emp([
+  await emps([
     ['19442','DIONIS LIMA DOS SANTOS','MOTORISTA OPERADOR'],
     ['19486','DOMINGOS DA SILVA','MOTORISTA OPERADOR'],
     ['19443','EDGALBES DA SILVA FERREIRA','SINALEIRO (A)'],
@@ -109,7 +55,7 @@ async function initDB() {
     ['19423','SALATIEL LUZ LEITE','OPERADOR DE MÁQUINAS PESADAS'],
   ], pT1);
 
-  await emp([
+  await emps([
     ['19424','ANTONIO AROLDO DA SILVA','PEDREIRO'],
     ['19425','ANTONIO DE JESUS SOUSA','OPERADOR DE MAQUINA LEVE'],
     ['19362','DANIEL SOUSA SILVA','OPERADOR DE MAQUINA LEVE'],
@@ -125,7 +71,7 @@ async function initDB() {
     ['19439','RAIMUNDO JOSE MIRANDA DOS SANTOS','OPERADOR DE MAQUINA LEVE'],
   ], pT2);
 
-  await emp([
+  await emps([
     ['19363','ALEXSANDRO BARBOSA LEAL','OPERADOR DE MÁQUINAS PESADAS'],
     ['19350','ANTONIO REGINALDO DA SILVA PEREIRA','SINALEIRO (A)'],
     ['19454','DAVIDSON NASCIMENTO DE SOUZA','MOTORISTA OPERADOR'],
@@ -141,7 +87,7 @@ async function initDB() {
     ['19347','WEVERTON NEYRON RIBEIRO','MOTORISTA OPERADOR'],
   ], cT1);
 
-  await emp([
+  await emps([
     ['19326','ALTEREDO SOUSA DA CRUZ','PEDREIRO'],
     ['19329','ARIEL MARTINS DA CRUZ','OPERADOR DE MAQUINA LEVE'],
     ['19330','DIONISIO DIAS PEREIRA FILHO','ENCARREGADO II'],
@@ -154,7 +100,7 @@ async function initDB() {
     ['19334','VANDERLEI AGUIAR GOES','OPERADOR DE MAQUINA LEVE'],
   ], cT2);
 
-  await emp([
+  await emps([
     ['19335','ANTONIO SOUSA DA SILVA','OPERADOR DE MAQUINA LEVE'],
     ['19336','DARLYSON SOUSA DA CONCEIÇÃO','OPERADOR DE MAQUINA LEVE'],
     ['19355','GEOVANE TORRES PEREIRA','OPERADOR DE MAQUINA LEVE'],
@@ -169,7 +115,7 @@ async function initDB() {
     ['19343','WARLACE SANTOS DA SILVA','PEDREIRO'],
   ], cT3);
 
-  await emp([
+  await emps([
     ['19368','ANTONIO CARLOS DOS SANTOS','OPERADOR DE MAQUINA LEVE'],
     ['19414','CARLOS ALBERTO SANTOS COSTA','MOTORISTA OPERADOR'],
     ['19372','CLEYDONIR RODRIGUES OLIVEIRA','PEDREIRO'],
@@ -185,20 +131,17 @@ async function initDB() {
     ['19392','BONI DO CERTO','PEDREIRO'],
   ], mT3);
 
-  const sessId = await ins(`
-    INSERT INTO sessions (title, week, month_year, date, time_start, time_end, description, workload, obra_vale)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-  `, ['DSSMAC', '02', 'Janeiro 2026', '2026-01-12', '07:00', '07:30',
-      'Biodiversidade e fauna na mina: Atenção ao período chuvoso. O período chuvoso traz mudanças significativas nas condições ambientais, especialmente em áreas de operação.',
-      '00h 30m', '11 5900130281']);
+  const sessId = await ins('sessions', {
+    title: 'DSSMAC', week: '02', month_year: 'Janeiro 2026',
+    date: '2026-01-12', time_start: '07:00', time_end: '07:30',
+    description: 'Biodiversidade e fauna na mina: Atenção ao período chuvoso.',
+    workload: '00h 30m', obra_vale: '11 5900130281',
+  });
 
-  const { rows: allTeams } = await pool.query('SELECT id, instructor FROM teams');
-  for (const t of allTeams) {
-    await pool.query(
-      'INSERT INTO assignments (session_id, team_id, instructor_name) VALUES ($1, $2, $3)',
-      [sessId, t.id, t.instructor]
-    );
-  }
+  const { data: allTeams } = await supabase.from('teams').select('id, instructor');
+  await supabase.from('assignments').insert(
+    allTeams.map(t => ({ session_id: sessId, team_id: t.id, instructor_name: t.instructor || null }))
+  );
 }
 
-module.exports = { pool, initDB };
+module.exports = { supabase, initDB };
