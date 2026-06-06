@@ -50,54 +50,46 @@ function renderAssignments(data) {
       const isSubmitted = a.status === 'submitted';
       return `
         <div class="session-card status-${a.status}" id="card_${a.id}">
-          <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
-            <div>
-              <div class="session-week">
-                <span class="badge me-2" style="background:#1a3a6b;font-size:12px;">Documento #${num}</span>
-                Semana ${a.week || ''} | ${a.month_year || ''}
+
+          <!-- TÍTULO EM DESTAQUE -->
+          <div class="d-flex justify-content-between align-items-start gap-2 flex-wrap">
+            <div style="flex:1;">
+              <div style="font-size:11px;color:#888;margin-bottom:4px;">
+                <span style="background:#1a3a6b;color:#fff;border-radius:4px;padding:2px 8px;font-size:11px;">
+                  #${num}
+                </span>
+                &nbsp; Semana ${a.week || ''} &nbsp;|&nbsp; ${a.month_year || ''}
               </div>
-              <div class="session-title">${a.title}</div>
-              <div class="session-detail mt-1">
-                <i class="bi bi-calendar3"></i> ${a.date ? formatDate(a.date) : '—'} &nbsp;
-                <i class="bi bi-clock"></i> ${a.time_start}–${a.time_end}
+              <div style="font-size:20px;font-weight:800;color:#1a2a45;line-height:1.2;margin-bottom:6px;">
+                ${a.title || 'Treinamento'}
               </div>
-              ${a.instructor_name ? `
-                <div class="session-detail">
-                  <i class="bi bi-person-fill"></i> Instrutor: <strong>${a.instructor_name}</strong>
-                </div>` : ''}
-              ${a.description ? `
-                <div class="session-detail mt-2" style="max-width:600px;font-size:12px;">
-                  ${a.description}
-                </div>` : ''}
+              <div style="font-size:13px;color:#555;">
+                <i class="bi bi-calendar3"></i> ${a.date ? formatDate(a.date) : '—'}
+                &nbsp;&nbsp;
+                <i class="bi bi-clock"></i> ${a.time_start || ''}–${a.time_end || ''}
+                ${a.instructor_name ? `&nbsp;&nbsp;<i class="bi bi-person-fill"></i> ${a.instructor_name}` : ''}
+              </div>
+              ${a.description ? `<div style="font-size:12px;color:#666;margin-top:6px;max-width:600px;">${a.description}</div>` : ''}
             </div>
-            <div class="text-end">
-              <div class="status-pill ${isSubmitted ? 'submitted' : 'pending'} mb-2">
-                ${isSubmitted
-                  ? '<i class="bi bi-check-circle-fill"></i> Enviado'
-                  : '<i class="bi bi-clock-fill"></i> Pendente'}
+            <div style="text-align:right;">
+              <div class="status-pill ${isSubmitted ? 'submitted' : 'pending'}">
+                ${isSubmitted ? '<i class="bi bi-check-circle-fill"></i> Enviado' : '<i class="bi bi-clock-fill"></i> Pendente'}
               </div>
-              ${isSubmitted && a.submitted_at ? `
-                <div style="font-size:11px;color:#555;">
-                  Enviado em ${formatDateTime(a.submitted_at)}
-                </div>` : ''}
+              ${isSubmitted && a.submitted_at ? `<div style="font-size:11px;color:#888;margin-top:4px;">${formatDateTime(a.submitted_at)}</div>` : ''}
             </div>
           </div>
 
-          <hr class="my-3">
+          <hr style="margin:14px 0;">
 
+          <!-- AÇÕES -->
           <div class="d-flex flex-wrap gap-2 align-items-center">
-            <a href="/api/pdf/${a.session_id}/${teamId}"
-               class="btn btn-outline-dark"
-               title="Baixar a lista de frequência em PDF">
+            <a href="/api/pdf/${a.session_id}/${teamId}" class="btn btn-outline-dark">
               <i class="bi bi-file-pdf-fill text-danger"></i> Baixar Lista
             </a>
-
-            <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-success'}"
-                    onclick="openUpload(${a.id})">
+            <button class="btn ${isSubmitted ? 'btn-outline-success' : 'btn-success'}" onclick="openUpload(${a.id})">
               <i class="bi bi-upload"></i>
               ${isSubmitted ? 'Enviar Mais Fotos' : 'Enviar Lista Assinada'}
             </button>
-
             ${a.sub_count > 0 ? `
               <button class="btn btn-outline-secondary" onclick="viewSubs(${a.id})">
                 <i class="bi bi-images"></i> Ver Enviados (${a.sub_count})

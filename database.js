@@ -131,17 +131,6 @@ async function initDB() {
     ['19392','BONI DO CERTO','PEDREIRO'],
   ], mT3);
 
-  const sessId = await ins('sessions', {
-    title: 'DSSMAC', week: '02', month_year: 'Janeiro 2026',
-    date: '2026-01-12', time_start: '07:00', time_end: '07:30',
-    description: 'Biodiversidade e fauna na mina: Atenção ao período chuvoso.',
-    workload: '00h 30m', obra_vale: '11 5900130281',
-  });
-
-  const { data: allTeams } = await supabase.from('teams').select('id, instructor');
-  await supabase.from('assignments').insert(
-    allTeams.map(t => ({ session_id: sessId, team_id: t.id, instructor_name: t.instructor || null }))
-  );
 }
 
 module.exports = { supabase, initDB };
