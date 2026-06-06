@@ -171,9 +171,41 @@ body { font-family: 'Segoe UI', sans-serif; background: #f1f3f6; }
 /* ── BUTTONS ── */
 .btn-sm { font-size: 12px; }
 
-/* ── RESPONSIVE ── */
+/* ── RESPONSIVE TABLET ── */
 @media (max-width: 900px) {
-  .sidebar { width: 60px; }
-  .sidebar-logo, .sidebar-subtitle, .nav-item span { display: none; }
-  .main-content { margin-left: 60px; padding: 16px; }
+  .sidebar { width: 64px; }
+  .sidebar-logo, .sidebar-subtitle { display: none; }
+  .nav-item { padding: 14px 0; justify-content: center; gap: 0; border-left-width: 3px; }
+  .nav-item span { display: none; }
+  .nav-item i { font-size: 20px; width: auto; }
+  .main-content { margin-left: 64px; padding: 16px; }
+}
+
+/* ── RESPONSIVE MOBILE ── */
+@media (max-width: 600px) {
+  .sidebar {
+    width: 100%; height: 60px;
+    flex-direction: row;
+    top: auto; bottom: 0; left: 0; right: 0;
+    border-top: 1px solid rgba(255,255,255,.15);
+  }
+  .sidebar-logo, .sidebar-subtitle { display: none; }
+  .sidebar-nav {
+    display: flex; flex-direction: row;
+    padding: 0; width: 100%;
+  }
+  .nav-item {
+    flex: 1; flex-direction: column;
+    gap: 2px; padding: 6px 2px;
+    font-size: 10px; border-left: none;
+    border-top: 3px solid transparent;
+    justify-content: center; align-items: center;
+  }
+  .nav-item span { display: block; font-size: 9px; text-align: center; white-space: nowrap; }
+  .nav-item i { font-size: 18px; width: auto; }
+  .nav-item.active { border-left-color: transparent; border-top-color: var(--brand-red); }
+  .main-content { margin-left: 0; padding: 12px; padding-bottom: 72px; min-height: 100vh; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+  .page-header h2 { font-size: 18px; }
+  .district-col { min-width: 100%; }
 }
