@@ -298,7 +298,7 @@ app.get('/api/portal/:teamId', async (req, res) => {
       supabase.from('assignments')
         .select('*, sessions(*)')
         .eq('team_id', req.params.teamId)
-        .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
     );
 
     const enriched = await Promise.all(assignments.map(async a => {
