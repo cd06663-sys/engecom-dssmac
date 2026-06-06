@@ -37,17 +37,25 @@ function renderAssignments(data) {
     return;
   }
 
+  const ordered = [...assignments].reverse();
+  const total   = ordered.length;
+
   el.innerHTML = `
     <h4 class="fw-bold mb-4" style="color:#1a2a45;">
       <i class="bi bi-clipboard2-check-fill me-2"></i>Seus Treinamentos
+      <span class="badge bg-secondary ms-2" style="font-size:14px;">${total} documento${total !== 1 ? 's' : ''}</span>
     </h4>
-    ${assignments.map(a => {
+    ${ordered.map((a, idx) => {
+      const num = idx + 1;
       const isSubmitted = a.status === 'submitted';
       return `
         <div class="session-card status-${a.status}" id="card_${a.id}">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
             <div>
-              <div class="session-week">Semana ${a.week || ''} | ${a.month_year || ''}</div>
+              <div class="session-week">
+                <span class="badge me-2" style="background:#1a3a6b;font-size:12px;">Documento #${num}</span>
+                Semana ${a.week || ''} | ${a.month_year || ''}
+              </div>
               <div class="session-title">${a.title}</div>
               <div class="session-detail mt-1">
                 <i class="bi bi-calendar3"></i> ${a.date ? formatDate(a.date) : '—'} &nbsp;

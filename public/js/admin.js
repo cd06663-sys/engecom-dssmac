@@ -187,6 +187,8 @@ function openSessionModal(id) {
   document.getElementById('sessionWorkload').value   = s?.workload   || '00h 30m';
   document.getElementById('sessionObraVale').value   = s?.obra_vale  || '11 5900130281';
   document.getElementById('modalSessionTitle').textContent = s ? 'Editar Treinamento' : 'Novo Treinamento';
+  document.getElementById('autoAssignRow').style.display = id ? 'none' : '';
+  document.getElementById('autoAssignAll').checked = true;
   mSession.show();
 }
 
@@ -204,7 +206,17 @@ async function saveSession() {
     obra_vale:   document.getElementById('sessionObraVale').value.trim(),
   };
   if (!body.title) return alert('Informe o título.');
-  await api(id ? 'PUT' : 'POST', id ? `/api/sessions/${id}` : '/api/sessions', body);
+  const result = await api(id ? 'PUT' : 'POST', id ? `/api/sessions/${id}` : '/api/sessions', body);
+
+  if (!id && document.getElementById('autoAssignAll')?.checked && result.id) {
+    if (!S.teams.length) await loadAll();
+    const assignments = S.teams.map(t => ({
+      team_id: t.id,
+      instructor_name: t.instructor || null,
+    }));
+    await api('POST', `/api/sessions/${result.id}/assign`, { assignments });
+  }
+
   mSession.hide();
   renderSessions();
 }
