@@ -5,7 +5,8 @@ const fs       = require('fs');
 const os       = require('os');
 const multer   = require('multer');
 const cors     = require('cors');
-const archiver = require('archiver');
+let archiver;
+try { archiver = require('archiver'); } catch (e) { console.warn('archiver indisponível:', e.message); }
 const { createClient } = require('@supabase/supabase-js');
 
 const { pool, initDB } = require('./database');
@@ -259,6 +260,7 @@ app.get('/api/pdf/:sessionId/:teamId', async (req, res) => {
 
 // ── PDF ZIP (todas as listas de um treinamento) ───────────────────
 app.get('/api/pdf/:sessionId/zip', async (req, res) => {
+  if (!archiver) return res.status(503).json({ error: 'ZIP indisponível neste servidor' });
   const { sessionId } = req.params;
 
   const session = await sql1('SELECT * FROM sessions WHERE id=$1', [sessionId]);
@@ -421,15 +423,15 @@ app.get('/equipe/:teamId', (_, res) => {
 });
 
 // ── START ─────────────────────────────────────────────────────────
-async function start() {
-  await initDB();
-  app.listen(PORT, () => {
-    console.log('\n======================================');
-    console.log('  ENGECOM DSSMAC - Sistema de Gestao');
-    console.log('======================================');
-    console.log(`  Admin:  http://localhost:${PORT}`);
-    console.log(`  Equipe: http://localhost:${PORT}/equipe/{ID}\n`);
-  });
-}
+// Ouve a porta primeiro; DB init roda em paralelo para não bloquear startup
+app.listen(PORT, () => {
+  console.log('\n======================================');
+  console.log('  ENGECOM DSSMAC - Sistema de Gestao');
+  console.log('======================================');
+  console.log(`  Porta: ${PORT}`);
+  console.log('  Inicializando banco...\n');
+});
 
-start().catch(console.error);
+initDB()
+  .then(() => console.log('  Banco OK'))
+  .catch(err => console.error('  Banco ERRO:', err.message));
