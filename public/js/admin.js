@@ -49,8 +49,26 @@ function showView(view) {
 
 // ── DASHBOARD ────────────────────────────────────────────────────
 async function renderDashboard() {
-  const data = await api('GET','/api/dashboard');
   const v = document.getElementById('view');
+  v.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border mb-3"></div><br>Conectando ao banco...</div>';
+
+  let data, lastErr;
+  for (let i = 0; i < 5; i++) {
+    try {
+      const r = await fetch('/api/dashboard');
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      data = await r.json();
+      if (!data.error) break;
+      throw new Error(data.error);
+    } catch (e) {
+      lastErr = e.message;
+      if (i < 4) await new Promise(r => setTimeout(r, 3000));
+    }
+  }
+  if (!data || data.error) {
+    v.innerHTML = `<div class="alert alert-warning m-4">Banco ainda iniciando... <button class="btn btn-sm btn-warning ms-2" onclick="renderDashboard()">Tentar novamente</button><br><small class="text-muted">${lastErr||''}</small></div>`;
+    return;
+  }
   v.innerHTML = `
     <div class="page-header">
       <h2><i class="bi bi-grid-1x2-fill me-2"></i>Dashboard</h2>

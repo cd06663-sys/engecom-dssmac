@@ -384,38 +384,48 @@ app.post('/api/assignments/:id/reset', async (req, res) => {
 
 // ── DASHBOARD ─────────────────────────────────────────────────────
 app.get('/api/dashboard', async (_, res) => {
-  const districts = await sql('SELECT * FROM districts ORDER BY name');
-  const result = await Promise.all(districts.map(async d => {
-    const teams = await sql('SELECT * FROM teams WHERE district_id=$1 ORDER BY team_number', [d.id]);
-    const teamsData = await Promise.all(teams.map(async t => {
-      const p = await sql1("SELECT COUNT(*)::int AS c FROM assignments WHERE team_id=$1 AND status='pending'",   [t.id]);
-      const s = await sql1("SELECT COUNT(*)::int AS c FROM assignments WHERE team_id=$1 AND status='submitted'", [t.id]);
-      const e = await sql1('SELECT COUNT(*)::int AS c FROM employees WHERE team_id=$1 AND active=1',             [t.id]);
-      return { ...t, pending: p.c, submitted: s.c, employees: e.c };
+  try {
+    const districts = await sql('SELECT * FROM districts ORDER BY name');
+    const result = await Promise.all(districts.map(async d => {
+      const teams = await sql('SELECT * FROM teams WHERE district_id=$1 ORDER BY team_number', [d.id]);
+      const teamsData = await Promise.all(teams.map(async t => {
+        const p = await sql1("SELECT COUNT(*)::int AS c FROM assignments WHERE team_id=$1 AND status='pending'",   [t.id]);
+        const s = await sql1("SELECT COUNT(*)::int AS c FROM assignments WHERE team_id=$1 AND status='submitted'", [t.id]);
+        const e = await sql1('SELECT COUNT(*)::int AS c FROM employees WHERE team_id=$1 AND active=1',             [t.id]);
+        return { ...t, pending: p.c, submitted: s.c, employees: e.c };
+      }));
+      return { ...d, teams: teamsData };
     }));
-    return { ...d, teams: teamsData };
-  }));
-  res.json(result);
+    res.json(result);
+  } catch (err) {
+    console.error('dashboard error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── TEAM PORTAL ───────────────────────────────────────────────────
 app.get('/api/portal/:teamId', async (req, res) => {
-  const team = await sql1(`
-    SELECT t.*, d.name AS district_name, d.city AS district_city
-    FROM teams t JOIN districts d ON t.district_id = d.id WHERE t.id = $1
-  `, [req.params.teamId]);
-  if (!team) return res.status(404).json({ error: 'Equipe não encontrada' });
+  try {
+    const team = await sql1(`
+      SELECT t.*, d.name AS district_name, d.city AS district_city
+      FROM teams t JOIN districts d ON t.district_id = d.id WHERE t.id = $1
+    `, [req.params.teamId]);
+    if (!team) return res.status(404).json({ error: 'Equipe não encontrada' });
 
-  const assignments = await sql(`
-    SELECT a.*, s.title, s.date, s.week, s.month_year, s.time_start, s.time_end, s.description,
-           (SELECT COUNT(*)::int FROM submissions WHERE assignment_id=a.id) AS sub_count
-    FROM assignments a
-    JOIN sessions s ON a.session_id = s.id
-    WHERE a.team_id = $1
-    ORDER BY s.date DESC
-  `, [req.params.teamId]);
+    const assignments = await sql(`
+      SELECT a.*, s.title, s.date, s.week, s.month_year, s.time_start, s.time_end, s.description,
+             (SELECT COUNT(*)::int FROM submissions WHERE assignment_id=a.id) AS sub_count
+      FROM assignments a
+      JOIN sessions s ON a.session_id = s.id
+      WHERE a.team_id = $1
+      ORDER BY s.date DESC
+    `, [req.params.teamId]);
 
-  res.json({ team, assignments });
+    res.json({ team, assignments });
+  } catch (err) {
+    console.error('portal error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.get('/equipe/:teamId', (_, res) => {
@@ -423,15 +433,25 @@ app.get('/equipe/:teamId', (_, res) => {
 });
 
 // ── START ─────────────────────────────────────────────────────────
-// Ouve a porta primeiro; DB init roda em paralelo para não bloquear startup
+async function startWithRetry(maxTries = 5, delayMs = 5000) {
+  for (let i = 1; i <= maxTries; i++) {
+    try {
+      await initDB();
+      console.log('  Banco OK');
+      return;
+    } catch (err) {
+      console.error(`  Banco tentativa ${i}/${maxTries}:`, err.message);
+      if (i < maxTries) await new Promise(r => setTimeout(r, delayMs));
+    }
+  }
+  console.error('  Banco falhou após todas as tentativas. Rodando sem dados.');
+}
+
 app.listen(PORT, () => {
   console.log('\n======================================');
   console.log('  ENGECOM DSSMAC - Sistema de Gestao');
   console.log('======================================');
   console.log(`  Porta: ${PORT}`);
-  console.log('  Inicializando banco...\n');
+  console.log('  Conectando ao banco...\n');
+  startWithRetry();
 });
-
-initDB()
-  .then(() => console.log('  Banco OK'))
-  .catch(err => console.error('  Banco ERRO:', err.message));
