@@ -61,8 +61,10 @@ function generatePDF(data, outputPath) {
       y += infoH;
     }
 
-    infoRow('Local do Treinamento:', team.district_city || '', 'Data:', formatDate(session.date));
-    infoRow('Instrutor:',           instructor || '',           'Horário:', `${session.time_start || '07:00'} às ${session.time_end || '07:30'}`);
+    const teamLabel = `${team.name}${team.district_name ? ' – ' + team.district_name : ''}`;
+    infoRow('Equipe:',              teamLabel,                  'Data:', formatDate(session.date));
+    infoRow('Local do Treinamento:', team.district_city || '', 'Horário:', `${session.time_start || '07:00'} às ${session.time_end || '07:30'}`);
+    infoRow('Instrutor:',           instructor || '',           'Especialidade:', team.specialty || '');
 
     // ── AÇÃO EDUCACIONAL + CARGA HORÁRIA ──────────────────────
     const actionW = Math.floor(CW * 0.8);

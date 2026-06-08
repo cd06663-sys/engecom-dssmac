@@ -126,6 +126,10 @@ async function renderSessions() {
               <button class="btn btn-sm btn-outline-primary" onclick="openAssignModal(${s.id})">
                 <i class="bi bi-diagram-3"></i> Atribuir Equipes
               </button>
+              ${total > 0 ? `
+              <a href="/api/pdf/${s.id}/zip" class="btn btn-sm btn-outline-success" title="Baixar todas as listas em ZIP">
+                <i class="bi bi-file-zip"></i> Baixar Todas
+              </a>` : ''}
               <button class="btn btn-sm btn-outline-secondary" onclick="openSessionModal(${s.id})">
                 <i class="bi bi-pencil"></i>
               </button>
@@ -338,7 +342,7 @@ async function renderTeams() {
           <div class="card-body p-0">
             <table class="table table-hover mb-0">
               <thead><tr>
-                <th>#</th><th>Nome</th><th>Instrutor</th>
+                <th>#</th><th>Nome</th><th>Especialidade</th><th>Localidade</th><th>Instrutor</th>
                 <th>Funcionários</th><th class="text-end">Ações</th>
               </tr></thead>
               <tbody>
@@ -348,6 +352,8 @@ async function renderTeams() {
                     <tr>
                       <td>${t.team_number}</td>
                       <td><strong>${t.name}</strong></td>
+                      <td>${t.specialty || '<span class="text-muted">—</span>'}</td>
+                      <td>${t.location  || '<span class="text-muted">—</span>'}</td>
                       <td>${t.instructor || '<span class="text-muted">—</span>'}</td>
                       <td>
                         <a href="#" onclick="filterEmployeesByTeam(${t.id}); return false;">
@@ -364,7 +370,7 @@ async function renderTeams() {
                       </td>
                     </tr>`;
                 }).join('')}
-                ${teams.length === 0 ? '<tr><td colspan="5" class="text-center text-muted py-3">Nenhuma equipe</td></tr>' : ''}
+                ${teams.length === 0 ? '<tr><td colspan="7" class="text-center text-muted py-3">Nenhuma equipe</td></tr>' : ''}
               </tbody>
             </table>
           </div>
@@ -384,6 +390,8 @@ function openTeamModal(id) {
   document.getElementById('teamName').value         = t?.name        || '';
   document.getElementById('teamNumber').value       = t?.team_number || 1;
   document.getElementById('teamInstructor').value   = t?.instructor  || '';
+  document.getElementById('teamSpecialty').value    = t?.specialty   || '';
+  document.getElementById('teamLocation').value     = t?.location    || '';
   const sel = document.getElementById('teamDistrict');
   sel.innerHTML = S.districts.map(d =>
     `<option value="${d.id}" ${t?.district_id === d.id ? 'selected' : ''}>${d.name}</option>`
@@ -399,6 +407,8 @@ async function saveTeam() {
     district_id: document.getElementById('teamDistrict').value,
     team_number: document.getElementById('teamNumber').value,
     instructor:  document.getElementById('teamInstructor').value.trim(),
+    specialty:   document.getElementById('teamSpecialty').value.trim(),
+    location:    document.getElementById('teamLocation').value.trim(),
   };
   if (!body.name) return alert('Informe o nome da equipe.');
   await api(id ? 'PUT' : 'POST', id ? `/api/teams/${id}` : '/api/teams', body);
