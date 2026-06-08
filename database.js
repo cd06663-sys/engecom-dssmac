@@ -7,10 +7,8 @@ const pool = new Pool({
 });
 
 async function initDB() {
-  await pool.query(`
-    ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS specialty TEXT;
-    ALTER TABLE IF EXISTS teams ADD COLUMN IF NOT EXISTS location  TEXT;
-  `).catch(() => {});
+  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT").catch(() => {});
+  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT").catch(() => {});
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS districts (
