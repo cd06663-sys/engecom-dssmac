@@ -8,7 +8,7 @@ function resolveConnString(raw) {
   const m = raw.match(/^(postgresql|postgres):\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co(?::\d+)?(\/.*)?$/);
   if (!m) return raw;
   const [, , pass, proj, db] = m;
-  const pooler = `postgresql://postgres.${proj}:${pass}@aws-0-us-east-1.pooler.supabase.com:5432${db || '/postgres'}`;
+  const pooler = `postgresql://postgres.${proj}:${pass}@aws-0-sa-east-1.pooler.supabase.com:5432${db || '/postgres'}`;
   console.log('DATABASE_URL → pooler IPv4');
   return pooler;
 }
@@ -74,6 +74,22 @@ async function initDB() {
 
   await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT").catch(() => {});
   await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT").catch(() => {});
+
+  await pool.query(`
+    WITH ranked AS (
+      SELECT id, ROW_NUMBER() OVER (PARTITION BY session_id, team_id ORDER BY id) AS rn
+      FROM assignments
+    )
+    DELETE FROM assignments
+    WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+  `);
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_assignments_session_team
+    ON assignments(session_id, team_id)
+  `);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_employees_team_active ON employees(team_id, active)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_assignments_team_status ON assignments(team_id, status)');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id)');
 
   // Seed: só roda se o banco estiver vazio
   const { rows: [{ c }] } = await pool.query('SELECT COUNT(*)::int AS c FROM districts');
