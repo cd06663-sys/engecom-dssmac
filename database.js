@@ -9,10 +9,17 @@ const pool = new Pool({
   max: 5,
 });
 
-async function initDB() {
-  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT").catch(() => {});
-  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT").catch(() => {});
+async function migrateDB() {
+  // Roda APÓS o servidor já estar ouvindo — sem conflito de lock
+  try {
+    await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT");
+  } catch (_) {}
+  try {
+    await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT");
+  } catch (_) {}
+}
 
+async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS districts (
       id   SERIAL PRIMARY KEY,
@@ -24,7 +31,9 @@ async function initDB() {
       name         TEXT NOT NULL,
       district_id  INTEGER NOT NULL REFERENCES districts(id),
       team_number  INTEGER NOT NULL DEFAULT 1,
-      instructor   TEXT
+      instructor   TEXT,
+      specialty    TEXT,
+      location     TEXT
     );
     CREATE TABLE IF NOT EXISTS employees (
       id        SERIAL PRIMARY KEY,
@@ -206,4 +215,4 @@ async function initDB() {
   }
 }
 
-module.exports = { pool, initDB };
+module.exports = { pool, initDB, migrateDB };

@@ -9,7 +9,7 @@ let archiver;
 try { archiver = require('archiver'); } catch (e) { console.warn('archiver indisponível:', e.message); }
 const { createClient } = require('@supabase/supabase-js');
 
-const { pool, initDB } = require('./database');
+const { pool, initDB, migrateDB } = require('./database');
 const { generatePDF }  = require('./pdf-generator');
 
 const app  = express();
@@ -433,25 +433,25 @@ app.get('/equipe/:teamId', (_, res) => {
 });
 
 // ── START ─────────────────────────────────────────────────────────
-async function startWithRetry(maxTries = 5, delayMs = 5000) {
-  for (let i = 1; i <= maxTries; i++) {
-    try {
-      await initDB();
-      console.log('  Banco OK');
-      return;
-    } catch (err) {
-      console.error(`  Banco tentativa ${i}/${maxTries}:`, err.message);
-      if (i < maxTries) await new Promise(r => setTimeout(r, delayMs));
-    }
+async function start() {
+  // 1. Banco primeiro (Railway aguarda até 100s para o app ouvir a porta)
+  try {
+    await initDB();
+    console.log('  Banco OK');
+  } catch (err) {
+    console.error('  initDB erro:', err.message);
   }
-  console.error('  Banco falhou após todas as tentativas. Rodando sem dados.');
+
+  // 2. Sobe o servidor
+  app.listen(PORT, () => {
+    console.log('\n======================================');
+    console.log('  ENGECOM DSSMAC - Sistema de Gestao');
+    console.log('======================================');
+    console.log(`  Porta: ${PORT}\n`);
+
+    // 3. Migração das colunas novas roda 3s depois — sem bloquear nada
+    setTimeout(() => migrateDB().catch(console.error), 3000);
+  });
 }
 
-app.listen(PORT, () => {
-  console.log('\n======================================');
-  console.log('  ENGECOM DSSMAC - Sistema de Gestao');
-  console.log('======================================');
-  console.log(`  Porta: ${PORT}`);
-  console.log('  Conectando ao banco...\n');
-  startWithRetry();
-});
+start().catch(console.error);
