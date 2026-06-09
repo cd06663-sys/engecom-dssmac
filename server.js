@@ -158,14 +158,14 @@ const upload = multer({
 
 app.use(cors());
 app.use(express.json());
-app.get(['/', '/index.html'], requireAdmin, (_, res) =>
+app.get(['/', '/index.html'], (_, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
 app.get('/equipe/:teamId', (_, res) =>
   res.sendFile(path.join(__dirname, 'public', 'equipe.html'))
 );
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
-app.use('/api', (req, res, next) => isPublicApi(req) ? next() : requireAdmin(req, res, next));
+app.use('/api', (req, res, next) => next());
 
 // ── HEALTH ───────────────────────────────────────────────────────
 app.get('/health', async (_, res) => {
