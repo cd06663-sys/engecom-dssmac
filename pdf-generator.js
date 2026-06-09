@@ -104,24 +104,20 @@ function drawPage(doc, ctx) {
   const actionH = 46;
   doc.rect(ML, y, actionW, actionH).lineWidth(0.5).stroke('#000');
   doc.rect(ML + actionW, y, workW, actionH).lineWidth(0.5).stroke('#000');
+  const actionContent = session.description ||
+    'Diálogo de Saúde, Segurança, Meio Ambiente e Comunidade - DSSMAC';
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000')
     .text('Ação Educacional: ', ML + 3, y + 3, { continued: true })
     .font('Helvetica')
-    .text('Diálogo de Saúde, Segurança, Meio Ambiente e Comunidade - DSSMAC');
+    .text(actionContent, { width: actionW - 9, height: 18, ellipsis: true });
+
   const semanaLine = [
     session.week       ? `Semana ${session.week}` : '',
     session.month_year || '',
   ].filter(Boolean).join(' | ');
-  doc.font('Helvetica-Bold').fontSize(7.5)
-    .text(semanaLine, ML + 3, y + 14);
-
-  if (session.description) {
-    doc.font('Helvetica').fontSize(6.2).fillColor('#222')
-      .text(`Descrição: ${session.description}`, ML + 3, y + 24, {
-        width: actionW - 6,
-        height: 18,
-        ellipsis: true,
-      });
+  if (semanaLine) {
+    doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000')
+      .text(semanaLine, ML + 3, y + 26);
   }
 
   doc.font('Helvetica-Bold').fontSize(7.5).fillColor('#000')
