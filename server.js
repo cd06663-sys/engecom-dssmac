@@ -40,10 +40,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── HEALTH ────────────────────────────────────────────────────────
 app.get('/health', async (_, res) => {
   try {
-    const r = await pool.query('SELECT COUNT(*)::int AS teams FROM teams');
-    res.json({ ok: true, teams: r.rows[0].teams });
+    await pool.query('SELECT 1');
+    const r = await pool.query('SELECT COUNT(*)::int AS c FROM districts');
+    res.json({ ok: true, districts: r.rows[0].c, db_url: process.env.DATABASE_URL ? 'SET' : 'NOT SET' });
   } catch (err) {
-    res.status(500).json({ ok: false, error: err.message });
+    res.status(500).json({
+      ok: false,
+      error: err.message || '(sem mensagem)',
+      code: err.code,
+      detail: err.detail,
+      db_url: process.env.DATABASE_URL ? 'SET' : 'NOT SET',
+    });
   }
 });
 
