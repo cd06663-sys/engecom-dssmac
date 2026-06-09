@@ -1,8 +1,20 @@
 require('dotenv').config();
 const { Pool } = require('pg');
 
+// Supabase direct connection (db.xxx.supabase.co) é IPv6-only — Railway não alcança.
+// Converte automaticamente para o session pooler (IPv4) sem alterar env vars.
+function resolveConnString(raw) {
+  if (!raw) return raw;
+  const m = raw.match(/^(postgresql|postgres):\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co(\/.*)?$/);
+  if (!m) return raw;
+  const [, , pass, proj, db] = m;
+  const pooler = `postgresql://postgres.${proj}:${pass}@aws-0-us-east-1.pooler.supabase.com:5432${db || '/postgres'}`;
+  console.log('DATABASE_URL → pooler IPv4');
+  return pooler;
+}
+
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: resolveConnString(process.env.DATABASE_URL),
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
 });
 
