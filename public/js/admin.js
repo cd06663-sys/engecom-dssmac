@@ -20,8 +20,31 @@ async function api(method, url, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const r = await fetch(url, opts);
-  return r.json();
+  let data = {};
+  try { data = await r.json(); } catch (_) { data = { error: 'Resposta inválida do servidor' }; }
+  if (!r.ok || data.error) throw new Error(data.error || `Erro ${r.status}`);
+  return data;
 }
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[ch]));
+}
+
+function safeUrl(value) {
+  const url = String(value || '');
+  return /^(https?:)?\/\//i.test(url) || url.startsWith('/') ? esc(url) : '#';
+}
+
+window.addEventListener('unhandledrejection', event => {
+  const msg = event.reason?.message || 'Erro inesperado';
+  alert(msg);
+});
 
 async function loadAll() {
   const [districts, teams, employees, sessions] = await Promise.all([
@@ -71,7 +94,7 @@ async function renderDashboard() {
   if (!data) {
     v.innerHTML = `<div class="alert alert-danger m-4">
       <strong>Banco de dados indisponível</strong><br>
-      <small>${lastErr||'Erro desconhecido'}</small><br><br>
+      <small>${esc(lastErr||'Erro desconhecido')}</small><br><br>
       <button class="btn btn-sm btn-danger" onclick="renderDashboard()">Tentar novamente</button>
     </div>`;
     return;
@@ -87,7 +110,7 @@ async function renderDashboard() {
       ${data.map(district => `
         <div class="district-col">
           <div class="district-header">
-            <i class="bi bi-geo-alt-fill"></i> ${district.name}
+            <i class="bi bi-geo-alt-fill"></i> ${esc(district.name)}
           </div>
           ${district.teams.map(t => {
             const total = t.pending + t.submitted;
@@ -97,7 +120,7 @@ async function renderDashboard() {
               <div class="team-card ${cls}" style="cursor:pointer;" onclick="window.open('/equipe/${t.id}','_blank')">
                 <div class="d-flex justify-content-between align-items-start">
                   <div>
-                    <div class="team-card-name">${t.name} <i class="bi bi-box-arrow-up-right" style="font-size:11px;color:#aaa;"></i></div>
+                    <div class="team-card-name">${esc(t.name)} <i class="bi bi-box-arrow-up-right" style="font-size:11px;color:#aaa;"></i></div>
                     <div class="team-card-sub">
                       <i class="bi bi-person-fill"></i> ${t.employees} funcionários
                     </div>
@@ -140,12 +163,17 @@ async function renderSessions() {
         <div class="session-row">
           <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
             <div>
-              <div class="session-title">${s.title} — Semana ${s.week || ''} | ${s.month_year || ''}</div>
+              <div class="session-title">
+                ${esc(s.title)}
+                ${s.week ? ` — Semana ${esc(s.week)}` : ''}
+                ${s.month_year ? ` | ${esc(s.month_year)}` : ''}
+              </div>
               <div class="session-meta">
                 <i class="bi bi-calendar3"></i> ${s.date ? formatDate(s.date) : '—'} &nbsp;
-                <i class="bi bi-clock"></i> ${s.time_start}–${s.time_end} &nbsp;
+                <i class="bi bi-clock"></i> ${esc(s.time_start)}–${esc(s.time_end)} &nbsp;
                 <i class="bi bi-people-fill"></i> ${total} equipes
               </div>
+              ${s.description ? `<div class="text-muted small mt-1"><i class="bi bi-card-text me-1"></i>${esc(s.description)}</div>` : ''}
             </div>
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-sm btn-outline-primary" onclick="openAssignModal(${s.id})">
@@ -173,14 +201,16 @@ async function renderSessions() {
                 <div class="progress-bar bg-success" style="width:${total>0?Math.round(subs/total*100):0}%"></div>
               </div>
               <div class="d-flex flex-wrap gap-2">
-                ${s.assignments.map(a => `
-                  <div class="assignment-row ${a.status}">
+                ${s.assignments.map(a => {
+                  const status = a.status === 'submitted' ? 'submitted' : 'pending';
+                  return `
+                  <div class="assignment-row ${status}">
                     <div>
-                      <strong style="font-size:12px;">${a.district_name} › ${a.team_name}</strong><br>
-                      <small class="text-muted">${a.instructor_name || 'Sem instrutor'}</small>
+                      <strong style="font-size:12px;">${esc(a.district_name)} › ${esc(a.team_name)}</strong><br>
+                      <small class="text-muted">${esc(a.instructor_name || 'Sem instrutor')}</small>
                     </div>
-                    <span class="badge ${a.status === 'submitted' ? 'bg-success' : 'bg-warning text-dark'}">
-                      ${a.status === 'submitted' ? '✓ Enviado' : '⏳ Pendente'}
+                    <span class="badge ${status === 'submitted' ? 'bg-success' : 'bg-warning text-dark'}">
+                      ${status === 'submitted' ? '✓ Enviado' : '⏳ Pendente'}
                     </span>
                     <div class="d-flex gap-1">
                       <a href="/api/pdf/${s.id}/${a.team_id}" class="btn btn-sm btn-outline-dark" title="Baixar PDF">
@@ -190,12 +220,13 @@ async function renderSessions() {
                         <button class="btn btn-sm btn-outline-success" onclick="viewSubs(${a.id})" title="${a.sub_count} arquivo(s)">
                           <i class="bi bi-images"></i> ${a.sub_count}
                         </button>` : ''}
-                      ${a.status === 'submitted' ? `
+                      ${status === 'submitted' ? `
                         <button class="btn btn-sm btn-outline-warning" onclick="resetAssignment(${a.id}, ${s.id})" title="Resetar">
                           <i class="bi bi-arrow-counterclockwise"></i>
                         </button>` : ''}
                     </div>
-                  </div>`).join('')}
+                  </div>`;
+                }).join('')}
               </div>
             </div>
           ` : '<p class="text-muted small mb-0">Nenhuma equipe atribuída. Clique em "Atribuir Equipes".</p>'}
@@ -203,8 +234,16 @@ async function renderSessions() {
     }).join('')}`;
 }
 
+function toggleWeek(chk) {
+  const inp = document.getElementById('sessionWeek');
+  inp.disabled = !chk.checked;
+  inp.style.background = chk.checked ? '' : '#f8f9fa';
+  if (!chk.checked) inp.value = '';
+}
+
 function openSessionModal(id) {
   const s = id ? S.sessions.find(x => x.id === id) : null;
+  const hasWeek = !!(s?.week);
   document.getElementById('sessionId').value        = s?.id || '';
   document.getElementById('sessionTitle').value      = s?.title      || 'DSSMAC';
   document.getElementById('sessionWeek').value       = s?.week       || '';
@@ -218,6 +257,9 @@ function openSessionModal(id) {
   document.getElementById('modalSessionTitle').textContent = s ? 'Editar Treinamento' : 'Novo Treinamento';
   document.getElementById('autoAssignRow').style.display = id ? 'none' : '';
   document.getElementById('autoAssignAll').checked = true;
+  const weekChk = document.getElementById('sessionWeekEnabled');
+  weekChk.checked = hasWeek;
+  toggleWeek(weekChk);
   mSession.show();
 }
 
@@ -267,7 +309,7 @@ async function openAssignModal(sessionId) {
   const body = document.getElementById('assignBody');
   body.innerHTML = S.districts.map(d => `
     <div class="mb-3">
-      <div class="fw-bold mb-2 text-primary"><i class="bi bi-geo-alt-fill"></i> ${d.name}</div>
+      <div class="fw-bold mb-2 text-primary"><i class="bi bi-geo-alt-fill"></i> ${esc(d.name)}</div>
       ${(grouped[d.id]?.teams || []).map(t => {
         const existing = session?.assignments.find(a => a.team_id === t.id);
         const checked  = existing ? 'checked' : '';
@@ -276,10 +318,10 @@ async function openAssignModal(sessionId) {
           <div class="d-flex align-items-center gap-2 mb-2 p-2 bg-light rounded">
             <input class="form-check-input" type="checkbox" id="chk_${t.id}" value="${t.id}" ${checked}>
             <label class="form-check-label flex-grow-1 mb-0" for="chk_${t.id}">
-              <strong>${t.name}</strong> <small class="text-muted">#${t.team_number}</small>
+              <strong>${esc(t.name)}</strong> <small class="text-muted">#${esc(t.team_number)}</small>
             </label>
             <input class="form-control form-control-sm" style="max-width:260px"
-              id="instr_${t.id}" placeholder="Instrutor" value="${instr}">
+              id="instr_${t.id}" placeholder="Instrutor" value="${esc(instr)}">
           </div>`;
       }).join('')}
     </div>`).join('');
@@ -316,15 +358,15 @@ async function viewSubs(assignId) {
       const isPdf = ext === 'pdf';
       return `
         <div style="text-align:center">
-          <a href="${s.file_path}" target="_blank" style="text-decoration:none">
+          <a href="${safeUrl(s.file_path)}" target="_blank" rel="noopener" style="text-decoration:none">
             <div class="sub-thumb d-flex align-items-center justify-content-center"
                  style="width:130px;height:130px;border-radius:10px;overflow:hidden;border:2px solid #dee2e6;background:#f8f9fa;">
               ${isPdf
                 ? `<i class="bi bi-file-pdf" style="font-size:40px;color:#c0392b;"></i>`
-                : `<img src="${s.file_path}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`}
+                : `<img src="${safeUrl(s.file_path)}" style="width:100%;height:100%;object-fit:cover;" loading="lazy">`}
             </div>
           </a>
-          <div style="font-size:11px;color:#666;margin-top:4px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${s.original_name}">${s.original_name || 'arquivo'}</div>
+          <div style="font-size:11px;color:#666;margin-top:4px;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(s.original_name)}">${esc(s.original_name || 'arquivo')}</div>
           <button class="btn btn-sm btn-link text-danger p-0" onclick="deleteSub(${s.id})">
             <i class="bi bi-trash"></i>
           </button>
@@ -361,8 +403,8 @@ async function renderTeams() {
         <div class="card mb-4">
           <div class="card-header d-flex align-items-center gap-2"
                style="background:var(--brand-blue);color:#fff;">
-            <i class="bi bi-geo-alt-fill"></i> ${d.name}
-            <small class="ms-1 text-white-50">(${d.city})</small>
+            <i class="bi bi-geo-alt-fill"></i> ${esc(d.name)}
+            <small class="ms-1 text-white-50">(${esc(d.city)})</small>
           </div>
           <div class="card-body p-0">
             <table class="table table-hover mb-0">
@@ -375,11 +417,11 @@ async function renderTeams() {
                   const empCount = S.employees.filter(e => e.team_id === t.id).length;
                   return `
                     <tr>
-                      <td>${t.team_number}</td>
-                      <td><strong>${t.name}</strong></td>
-                      <td>${t.specialty || '<span class="text-muted">—</span>'}</td>
-                      <td>${t.location  || '<span class="text-muted">—</span>'}</td>
-                      <td>${t.instructor || '<span class="text-muted">—</span>'}</td>
+                      <td>${esc(t.team_number)}</td>
+                      <td><strong>${esc(t.name)}</strong></td>
+                      <td>${t.specialty ? esc(t.specialty) : '<span class="text-muted">—</span>'}</td>
+                      <td>${t.location  ? esc(t.location)  : '<span class="text-muted">—</span>'}</td>
+                      <td>${t.instructor ? esc(t.instructor) : '<span class="text-muted">—</span>'}</td>
                       <td>
                         <a href="#" onclick="filterEmployeesByTeam(${t.id}); return false;">
                           ${empCount} pessoa(s)
@@ -405,7 +447,7 @@ async function renderTeams() {
   // populate district select
   const sel = document.getElementById('teamDistrict');
   if (sel) {
-    sel.innerHTML = S.districts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    sel.innerHTML = S.districts.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
   }
 }
 
@@ -419,7 +461,7 @@ function openTeamModal(id) {
   document.getElementById('teamLocation').value     = t?.location    || '';
   const sel = document.getElementById('teamDistrict');
   sel.innerHTML = S.districts.map(d =>
-    `<option value="${d.id}" ${t?.district_id === d.id ? 'selected' : ''}>${d.name}</option>`
+    `<option value="${d.id}" ${t?.district_id === d.id ? 'selected' : ''}>${esc(d.name)}</option>`
   ).join('');
   document.getElementById('modalTeamTitle').textContent = t ? 'Editar Equipe' : 'Nova Equipe';
   mTeam.show();
@@ -457,14 +499,14 @@ async function renderEmployees(teamFilter) {
   document.getElementById('view').innerHTML = `
     <div class="page-header">
       <h2><i class="bi bi-person-badge-fill me-2"></i>Funcionários
-        ${teamFilter ? `<small class="text-muted fs-6">— ${S.teams.find(t=>t.id===teamFilter)?.name || ''}</small>` : ''}
+        ${teamFilter ? `<small class="text-muted fs-6">— ${esc(S.teams.find(t=>t.id===teamFilter)?.name || '')}</small>` : ''}
       </h2>
       <div class="d-flex gap-2">
         ${teamFilter ? `<button class="btn btn-sm btn-outline-secondary" onclick="renderEmployees()">Ver todos</button>` : ''}
         <select class="form-select form-select-sm" style="width:auto" onchange="filterEmpByTeam(this.value)">
           <option value="">Todas as equipes</option>
           ${S.teams.map(t =>
-            `<option value="${t.id}" ${t.id===teamFilter?'selected':''}>${t.district_name} › ${t.name}</option>`
+            `<option value="${t.id}" ${t.id===teamFilter?'selected':''}>${esc(t.district_name)} › ${esc(t.name)}</option>`
           ).join('')}
         </select>
         <button class="btn btn-primary btn-sm" onclick="openEmployeeModal()">
@@ -481,11 +523,11 @@ async function renderEmployees(teamFilter) {
           <tbody>
             ${filtered.map(e => `
               <tr>
-                <td>${e.matricula || '—'}</td>
-                <td><strong>${e.name}</strong></td>
-                <td>${e.function || '—'}</td>
-                <td>${e.team_name ? `${e.district_name} › ${e.team_name}` : '—'}</td>
-                <td>${e.company}</td>
+                <td>${esc(e.matricula || '—')}</td>
+                <td><strong>${esc(e.name)}</strong></td>
+                <td>${esc(e.function || '—')}</td>
+                <td>${e.team_name ? `${esc(e.district_name)} › ${esc(e.team_name)}` : '—'}</td>
+                <td>${esc(e.company)}</td>
                 <td class="text-end">
                   <button class="btn btn-sm btn-outline-secondary me-1" onclick="openEmployeeModal(${e.id})">
                     <i class="bi bi-pencil"></i>
@@ -507,7 +549,7 @@ async function renderEmployees(teamFilter) {
   if (empTeam) {
     empTeam.innerHTML = '<option value="">— Sem equipe —</option>' +
       S.teams.map(t =>
-        `<option value="${t.id}">${t.district_name} › ${t.name}</option>`
+        `<option value="${t.id}">${esc(t.district_name)} › ${esc(t.name)}</option>`
       ).join('');
   }
 }
@@ -531,7 +573,7 @@ function openEmployeeModal(id) {
   const sel = document.getElementById('empTeam');
   sel.innerHTML = '<option value="">— Sem equipe —</option>' +
     S.teams.map(t =>
-      `<option value="${t.id}" ${e?.team_id===t.id?'selected':''}>${t.district_name} › ${t.name}</option>`
+      `<option value="${t.id}" ${e?.team_id===t.id?'selected':''}>${esc(t.district_name)} › ${esc(t.name)}</option>`
     ).join('');
   document.getElementById('modalEmployeeTitle').textContent = e ? 'Editar Funcionário' : 'Novo Funcionário';
   mEmployee.show();
@@ -574,19 +616,19 @@ async function renderLinks() {
     ${S.districts.map(d => {
       const teams = grouped[d.id]?.teams || [];
       return `
-        <h5 class="fw-bold text-primary mb-3"><i class="bi bi-geo-alt-fill"></i> ${d.name}</h5>
+        <h5 class="fw-bold text-primary mb-3"><i class="bi bi-geo-alt-fill"></i> ${esc(d.name)}</h5>
         ${teams.map(t => {
           const url = `${base}/equipe/${t.id}`;
           return `
             <div class="link-card">
               <div>
-                <strong>${t.name}</strong> <small class="text-muted">#${t.team_number}</small>
+                <strong>${esc(t.name)}</strong> <small class="text-muted">#${esc(t.team_number)}</small>
               </div>
-              <div class="link-url" id="link_${t.id}">${url}</div>
+              <div class="link-url" id="link_${t.id}">${esc(url)}</div>
               <button class="btn btn-sm btn-outline-primary" onclick="copyLink('${url}', this)">
                 <i class="bi bi-clipboard"></i> Copiar
               </button>
-              <a href="${url}" target="_blank" class="btn btn-sm btn-outline-secondary">
+              <a href="${safeUrl(url)}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary">
                 <i class="bi bi-box-arrow-up-right"></i> Abrir
               </a>
             </div>`;
