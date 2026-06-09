@@ -4,10 +4,29 @@ const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 15000,
+  connectionTimeoutMillis: 60000,
   idleTimeoutMillis: 30000,
   max: 5,
 });
+
+// Aguarda o Supabase acordar (pode demorar até 30s no free tier)
+async function waitForDB(maxWaitMs = 90000) {
+  const start = Date.now();
+  let attempt = 0;
+  while (Date.now() - start < maxWaitMs) {
+    try {
+      await pool.query('SELECT 1');
+      console.log(`  DB conectado após ${Math.round((Date.now()-start)/1000)}s`);
+      return;
+    } catch (err) {
+      attempt++;
+      const elapsed = Math.round((Date.now() - start) / 1000);
+      console.log(`  DB aguardando... tentativa ${attempt} (${elapsed}s) - ${err.message.slice(0,60)}`);
+      await new Promise(r => setTimeout(r, 4000));
+    }
+  }
+  throw new Error('Banco não respondeu em 90 segundos');
+}
 
 async function migrateDB() {
   // Roda APÓS o servidor já estar ouvindo — sem conflito de lock
@@ -20,6 +39,8 @@ async function migrateDB() {
 }
 
 async function initDB() {
+  await waitForDB();  // espera o Supabase acordar antes de qualquer coisa
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS districts (
       id   SERIAL PRIMARY KEY,

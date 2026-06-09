@@ -39,6 +39,16 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── HEALTH ────────────────────────────────────────────────────────
+app.get('/health', async (_, res) => {
+  try {
+    const r = await pool.query('SELECT COUNT(*)::int AS teams FROM teams');
+    res.json({ ok: true, teams: r.rows[0].teams });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ── DISTRICTS ─────────────────────────────────────────────────────
 app.get('/api/districts', async (_, res) => {
   res.json(await sql('SELECT * FROM districts ORDER BY name'));
