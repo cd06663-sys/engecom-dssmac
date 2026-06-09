@@ -5,7 +5,7 @@ const { Pool } = require('pg');
 // Converte automaticamente para o session pooler (IPv4) sem alterar env vars.
 function resolveConnString(raw) {
   if (!raw) return raw;
-  const m = raw.match(/^(postgresql|postgres):\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co(\/.*)?$/);
+  const m = raw.match(/^(postgresql|postgres):\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co(?::\d+)?(\/.*)?$/);
   if (!m) return raw;
   const [, , pass, proj, db] = m;
   const pooler = `postgresql://postgres.${proj}:${pass}@aws-0-us-east-1.pooler.supabase.com:5432${db || '/postgres'}`;
