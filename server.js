@@ -16,12 +16,8 @@ const { generatePDF }          = require('./pdf-generator');
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ||
-  crypto.randomBytes(9).toString('base64').replace(/[^a-zA-Z0-9]/g, '').slice(0, 12);
-if (!process.env.ADMIN_PASSWORD) {
-  console.warn(`ADMIN_PASSWORD não configurada; senha temporária: ${ADMIN_PASSWORD}`);
-}
+const ADMIN_USER     = process.env.ADMIN_USER     || 'admin';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || ADMIN_USER; // padrão: senha = usuário
 
 // ── helpers ──────────────────────────────────────────────────────
 const sqAll = (q) => sq(q);
@@ -75,11 +71,11 @@ async function requireAdmin(req, res, next) {
   // Superadmin via variável de ambiente
   if (safeEqual(user, ADMIN_USER) && safeEqual(pass, ADMIN_PASSWORD)) return next();
 
-  // Matrícula: usuário = senha = matrícula do funcionário ativo
+  // Matrícula: usuário = senha = matrícula (qualquer funcionário cadastrado)
   if (user && user === pass) {
     try {
       const { data } = await supabase.from('employees')
-        .select('id').eq('matricula', user).eq('active', 1).limit(1);
+        .select('id').eq('matricula', user).limit(1);
       if (data?.length > 0) return next();
     } catch (_) {}
   }

@@ -25,6 +25,24 @@ async function initDB() {
   const { error } = await supabase.from('districts').select('id').limit(1);
   if (error) throw sdkErr(error);
 
+  // Garante que o admin ADMIN_USER exista como funcionário (para login por matrícula)
+  const adminMatricula = process.env.ADMIN_USER;
+  if (adminMatricula && adminMatricula !== 'admin') {
+    const { data: existing } = await supabase.from('employees')
+      .select('id').eq('matricula', adminMatricula).limit(1);
+    if (!existing?.length) {
+      await supabase.from('employees').insert({
+        matricula: adminMatricula,
+        name: 'ADMINISTRADOR',
+        function: 'ADMINISTRADOR',
+        company: 'ENGECOM',
+        team_id: null,
+        active: 1,
+      });
+      console.log(`Admin ${adminMatricula} inserido como funcionário`);
+    }
+  }
+
   // Seed apenas se banco estiver vazio
   const { count } = await supabase.from('districts')
     .select('*', { count: 'exact', head: true });
