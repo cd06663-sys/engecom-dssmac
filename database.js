@@ -4,43 +4,10 @@ const { Pool } = require('pg');
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-  connectionTimeoutMillis: 60000,
-  idleTimeoutMillis: 30000,
-  max: 5,
 });
 
-// Aguarda o Supabase acordar (pode demorar até 30s no free tier)
-async function waitForDB(maxWaitMs = 90000) {
-  const start = Date.now();
-  let attempt = 0;
-  while (Date.now() - start < maxWaitMs) {
-    try {
-      await pool.query('SELECT 1');
-      console.log(`  DB conectado após ${Math.round((Date.now()-start)/1000)}s`);
-      return;
-    } catch (err) {
-      attempt++;
-      const elapsed = Math.round((Date.now() - start) / 1000);
-      console.log(`  DB aguardando... tentativa ${attempt} (${elapsed}s) - ${err.message.slice(0,60)}`);
-      await new Promise(r => setTimeout(r, 4000));
-    }
-  }
-  throw new Error('Banco não respondeu em 90 segundos');
-}
-
-async function migrateDB() {
-  // Roda APÓS o servidor já estar ouvindo — sem conflito de lock
-  try {
-    await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT");
-  } catch (_) {}
-  try {
-    await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT");
-  } catch (_) {}
-}
-
 async function initDB() {
-  await waitForDB();  // espera o Supabase acordar antes de qualquer coisa
-
+  // Cria tabelas (se ainda não existirem)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS districts (
       id   SERIAL PRIMARY KEY,
@@ -96,6 +63,11 @@ async function initDB() {
     );
   `);
 
+  // Adiciona colunas novas em instalações existentes (seguro com IF NOT EXISTS)
+  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT").catch(() => {});
+  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT").catch(() => {});
+
+  // Seed: só roda se o banco estiver vazio
   const { rows: [{ c }] } = await pool.query('SELECT COUNT(*)::int AS c FROM districts');
   if (c > 0) return;
 
@@ -107,25 +79,24 @@ async function initDB() {
   const mdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Marabá', 'MARABÁ - PA']);
 
   const team = (n, d, num, inst) =>
-    ins('INSERT INTO teams (name, district_id, team_number, instructor) VALUES ($1, $2, $3, $4)', [n, d, num, inst || null]);
+    ins('INSERT INTO teams (name, district_id, team_number, instructor) VALUES ($1,$2,$3,$4)', [n, d, num, inst || null]);
 
   const pT1 = await team('Terraplanagem', pdId, 1, 'RILDO MONTEIRO DA SILVA');
   const pT2 = await team('Prevenção',     pdId, 2, 'RAIANE PEREIRA DA SILVA');
-  await team('Corretiva',     pdId, 3, null);
+  await       team('Corretiva',     pdId, 3, null);
   const cT1 = await team('Terraplanagem', cdId, 1, 'PATRICK DE MENDONÇA GONÇALVES');
   const cT2 = await team('Corretiva',     cdId, 2, 'DANIEL PEREIRA CAMPELO DA SILVA');
   const cT3 = await team('Prevenção',     cdId, 3, 'MICHELY VIEIRA PEREIRA');
-  await team('Terraplanagem', mdId, 1, null);
-  await team('Corretiva',     mdId, 2, null);
+  await       team('Terraplanagem', mdId, 1, null);
+  await       team('Corretiva',     mdId, 2, null);
   const mT3 = await team('Prevenção',     mdId, 3, 'DANIELA FERREIRA MORAES MATOS');
 
   const emp = async (list, teamId) => {
-    for (const [m, n, f] of list) {
+    for (const [m, n, f] of list)
       await pool.query(
-        'INSERT INTO employees (matricula, name, function, company, team_id) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO employees (matricula, name, function, company, team_id) VALUES ($1,$2,$3,$4,$5)',
         [m, n, f, 'ENGECOM', teamId]
       );
-    }
   };
 
   await emp([
@@ -219,21 +190,6 @@ async function initDB() {
     ['19404','TARCIZO SILVA SOUZA','OPERADOR DE MAQUINA LEVE'],
     ['19392','BONI DO CERTO','PEDREIRO'],
   ], mT3);
-
-  const sessId = await ins(`
-    INSERT INTO sessions (title, week, month_year, date, time_start, time_end, description, workload, obra_vale)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-  `, ['DSSMAC', '02', 'Janeiro 2026', '2026-01-12', '07:00', '07:30',
-      'Biodiversidade e fauna na mina: Atenção ao período chuvoso. O período chuvoso traz mudanças significativas nas condições ambientais, especialmente em áreas de operação.',
-      '00h 30m', '11 5900130281']);
-
-  const { rows: allTeams } = await pool.query('SELECT id, instructor FROM teams');
-  for (const t of allTeams) {
-    await pool.query(
-      'INSERT INTO assignments (session_id, team_id, instructor_name) VALUES ($1, $2, $3)',
-      [sessId, t.id, t.instructor]
-    );
-  }
 }
 
-module.exports = { pool, initDB, migrateDB };
+module.exports = { pool, initDB };
