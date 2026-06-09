@@ -63,7 +63,7 @@ function flatEmployee(e) {
 function hash(v) { return crypto.createHash('sha256').update(String(v)).digest(); }
 function safeEqual(a, b) { return crypto.timingSafeEqual(hash(a), hash(b)); }
 
-function requireAdmin(req, res, next) {
+async function requireAdmin(req, res, next) {
   const header = req.headers.authorization || '';
   if (!header.startsWith('Basic ')) return askAuth(res);
   let decoded = '';
@@ -71,7 +71,19 @@ function requireAdmin(req, res, next) {
   const sep = decoded.indexOf(':');
   const user = sep >= 0 ? decoded.slice(0, sep) : '';
   const pass = sep >= 0 ? decoded.slice(sep + 1) : '';
+
+  // Superadmin via variável de ambiente
   if (safeEqual(user, ADMIN_USER) && safeEqual(pass, ADMIN_PASSWORD)) return next();
+
+  // Matrícula: usuário = senha = matrícula do funcionário ativo
+  if (user && user === pass) {
+    try {
+      const { data } = await supabase.from('employees')
+        .select('id').eq('matricula', user).eq('active', 1).limit(1);
+      if (data?.length > 0) return next();
+    } catch (_) {}
+  }
+
   return askAuth(res);
 }
 function askAuth(res) {
