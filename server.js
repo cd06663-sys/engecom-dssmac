@@ -425,16 +425,21 @@ app.get('/equipe/:teamId', (_, res) =>
 );
 
 // ── START ─────────────────────────────────────────────────────────
-async function start() {
-  console.log('Conectando ao banco...');
-  await initDB();
-  console.log('Banco OK. Subindo servidor...');
-  app.listen(PORT, () =>
-    console.log(`ENGECOM DSSMAC rodando na porta ${PORT}`)
-  );
-}
+// Porta abre IMEDIATAMENTE — Railway detecta o app como vivo.
+// Banco inicializa em paralelo com retry até funcionar.
+app.listen(PORT, () =>
+  console.log(`ENGECOM DSSMAC na porta ${PORT}`)
+);
 
-start().catch(err => {
-  console.error('ERRO FATAL:', err.message);
-  process.exit(1);
-});
+(async function connectDB() {
+  for (let i = 1; ; i++) {
+    try {
+      await initDB();
+      console.log('Banco OK');
+      return;
+    } catch (err) {
+      console.error(`Banco tentativa ${i}: ${err.message}`);
+      await new Promise(r => setTimeout(r, 8000));
+    }
+  }
+})();

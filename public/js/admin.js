@@ -53,20 +53,27 @@ async function renderDashboard() {
   v.innerHTML = '<div class="text-center py-5 text-muted"><div class="spinner-border mb-3"></div><br>Conectando ao banco...</div>';
 
   let data, lastErr;
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 8; i++) {
     try {
       const r = await fetch('/api/dashboard');
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      data = await r.json();
-      if (!data.error) break;
-      throw new Error(data.error);
+      const json = await r.json();
+      if (json.error) throw new Error(json.error);
+      data = json;
+      break;
     } catch (e) {
       lastErr = e.message;
-      if (i < 4) await new Promise(r => setTimeout(r, 3000));
+      if (i < 7) {
+        v.innerHTML = `<div class="text-center py-5 text-muted"><div class="spinner-border mb-3"></div><br>Conectando ao banco... (tentativa ${i+2}/8)</div>`;
+        await new Promise(r => setTimeout(r, 4000));
+      }
     }
   }
-  if (!data || data.error) {
-    v.innerHTML = `<div class="alert alert-warning m-4">Banco ainda iniciando... <button class="btn btn-sm btn-warning ms-2" onclick="renderDashboard()">Tentar novamente</button><br><small class="text-muted">${lastErr||''}</small></div>`;
+  if (!data) {
+    v.innerHTML = `<div class="alert alert-danger m-4">
+      <strong>Banco de dados indisponível</strong><br>
+      <small>${lastErr||'Erro desconhecido'}</small><br><br>
+      <button class="btn btn-sm btn-danger" onclick="renderDashboard()">Tentar novamente</button>
+    </div>`;
     return;
   }
   v.innerHTML = `
