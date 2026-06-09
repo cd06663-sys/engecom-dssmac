@@ -1,126 +1,59 @@
 require('dotenv').config();
-const { Pool } = require('pg');
+const { createClient } = require('@supabase/supabase-js');
 
-// Supabase direct connection (db.xxx.supabase.co) é IPv6-only — Railway não alcança.
-// Converte automaticamente para o session pooler (IPv4) sem alterar env vars.
-function resolveConnString(raw) {
-  if (!raw) return raw;
-  const m = raw.match(/^(postgresql|postgres):\/\/postgres:([^@]+)@db\.([^.]+)\.supabase\.co(?::\d+)?(\/.*)?$/);
-  if (!m) return raw;
-  const [, , pass, proj, db] = m;
-  const pooler = `postgresql://postgres.${proj}:${pass}@aws-0-sa-east-1.pooler.supabase.com:5432${db || '/postgres'}`;
-  console.log('DATABASE_URL → pooler IPv4');
-  return pooler;
+const supabase = createClient(
+  process.env.SUPABASE_URL         || '',
+  process.env.SUPABASE_SERVICE_KEY || '',
+  { auth: { persistSession: false } }
+);
+
+function sdkErr(e) {
+  const err = new Error(e.message || 'Supabase error');
+  err.code   = e.code;
+  err.detail = e.details;
+  return err;
 }
 
-const pool = new Pool({
-  connectionString: resolveConnString(process.env.DATABASE_URL),
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false,
-});
+async function sq(promise) {
+  const { data, error } = await promise;
+  if (error) throw sdkErr(error);
+  return data ?? [];
+}
 
 async function initDB() {
-  await pool.query(`CREATE TABLE IF NOT EXISTS districts (
-    id   SERIAL PRIMARY KEY,
-    name TEXT NOT NULL,
-    city TEXT NOT NULL
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS teams (
-    id           SERIAL PRIMARY KEY,
-    name         TEXT NOT NULL,
-    district_id  INTEGER NOT NULL REFERENCES districts(id),
-    team_number  INTEGER NOT NULL DEFAULT 1,
-    instructor   TEXT,
-    specialty    TEXT,
-    location     TEXT
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS employees (
-    id        SERIAL PRIMARY KEY,
-    matricula TEXT,
-    name      TEXT NOT NULL,
-    function  TEXT,
-    company   TEXT DEFAULT 'ENGECOM',
-    team_id   INTEGER REFERENCES teams(id),
-    active    INTEGER DEFAULT 1
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS sessions (
-    id          SERIAL PRIMARY KEY,
-    title       TEXT NOT NULL,
-    week        TEXT,
-    month_year  TEXT,
-    date        TEXT,
-    time_start  TEXT DEFAULT '07:00',
-    time_end    TEXT DEFAULT '07:30',
-    description TEXT,
-    workload    TEXT DEFAULT '00h 30m',
-    obra_vale   TEXT DEFAULT '11 5900130281',
-    created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS assignments (
-    id              SERIAL PRIMARY KEY,
-    session_id      INTEGER NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
-    team_id         INTEGER NOT NULL REFERENCES teams(id),
-    instructor_name TEXT,
-    status          TEXT DEFAULT 'pending',
-    pdf_path        TEXT,
-    submitted_at    TIMESTAMP
-  )`);
-  await pool.query(`CREATE TABLE IF NOT EXISTS submissions (
-    id            SERIAL PRIMARY KEY,
-    assignment_id INTEGER NOT NULL REFERENCES assignments(id) ON DELETE CASCADE,
-    file_path     TEXT NOT NULL,
-    original_name TEXT,
-    uploaded_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-  )`);
+  // Verifica conectividade — tabelas devem existir de inicialização anterior
+  const { error } = await supabase.from('districts').select('id').limit(1);
+  if (error) throw sdkErr(error);
 
-  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS specialty TEXT").catch(() => {});
-  await pool.query("ALTER TABLE teams ADD COLUMN IF NOT EXISTS location  TEXT").catch(() => {});
+  // Seed apenas se banco estiver vazio
+  const { count } = await supabase.from('districts')
+    .select('*', { count: 'exact', head: true });
+  if (count > 0) return;
 
-  await pool.query(`
-    WITH ranked AS (
-      SELECT id, ROW_NUMBER() OVER (PARTITION BY session_id, team_id ORDER BY id) AS rn
-      FROM assignments
-    )
-    DELETE FROM assignments
-    WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
-  `);
-  await pool.query(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_assignments_session_team
-    ON assignments(session_id, team_id)
-  `);
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_employees_team_active ON employees(team_id, active)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_assignments_team_status ON assignments(team_id, status)');
-  await pool.query('CREATE INDEX IF NOT EXISTS idx_submissions_assignment ON submissions(assignment_id)');
+  const ins = async (table, row) =>
+    (await sq(supabase.from(table).insert(row).select('id').single())).id;
 
-  // Seed: só roda se o banco estiver vazio
-  const { rows: [{ c }] } = await pool.query('SELECT COUNT(*)::int AS c FROM districts');
-  if (c > 0) return;
+  const pd = await ins('districts', { name: 'Parauapebas',       city: 'PARAUAPEBAS - PA' });
+  const cd = await ins('districts', { name: 'Canaã dos Carajás', city: 'CANAÃ DOS CARAJÁS - PA' });
+  const md = await ins('districts', { name: 'Marabá',            city: 'MARABÁ - PA' });
 
-  const ins = async (text, values) =>
-    (await pool.query(text + ' RETURNING id', values)).rows[0].id;
+  const team = (name, district_id, team_number, instructor) =>
+    ins('teams', { name, district_id, team_number, instructor: instructor || null });
 
-  const pdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Parauapebas', 'PARAUAPEBAS - PA']);
-  const cdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Canaã dos Carajás', 'CANAÃ DOS CARAJÁS - PA']);
-  const mdId = await ins('INSERT INTO districts (name, city) VALUES ($1, $2)', ['Marabá', 'MARABÁ - PA']);
+  const pT1 = await team('Terraplanagem', pd, 1, 'RILDO MONTEIRO DA SILVA');
+  const pT2 = await team('Prevenção',     pd, 2, 'RAIANE PEREIRA DA SILVA');
+  await       team('Corretiva',     pd, 3, null);
+  const cT1 = await team('Terraplanagem', cd, 1, 'PATRICK DE MENDONÇA GONÇALVES');
+  const cT2 = await team('Corretiva',     cd, 2, 'DANIEL PEREIRA CAMPELO DA SILVA');
+  const cT3 = await team('Prevenção',     cd, 3, 'MICHELY VIEIRA PEREIRA');
+  await       team('Terraplanagem', md, 1, null);
+  await       team('Corretiva',     md, 2, null);
+  const mT3 = await team('Prevenção',     md, 3, 'DANIELA FERREIRA MORAES MATOS');
 
-  const team = (n, d, num, inst) =>
-    ins('INSERT INTO teams (name, district_id, team_number, instructor) VALUES ($1,$2,$3,$4)', [n, d, num, inst || null]);
-
-  const pT1 = await team('Terraplanagem', pdId, 1, 'RILDO MONTEIRO DA SILVA');
-  const pT2 = await team('Prevenção',     pdId, 2, 'RAIANE PEREIRA DA SILVA');
-  await       team('Corretiva',     pdId, 3, null);
-  const cT1 = await team('Terraplanagem', cdId, 1, 'PATRICK DE MENDONÇA GONÇALVES');
-  const cT2 = await team('Corretiva',     cdId, 2, 'DANIEL PEREIRA CAMPELO DA SILVA');
-  const cT3 = await team('Prevenção',     cdId, 3, 'MICHELY VIEIRA PEREIRA');
-  await       team('Terraplanagem', mdId, 1, null);
-  await       team('Corretiva',     mdId, 2, null);
-  const mT3 = await team('Prevenção',     mdId, 3, 'DANIELA FERREIRA MORAES MATOS');
-
-  const emp = async (list, teamId) => {
-    for (const [m, n, f] of list)
-      await pool.query(
-        'INSERT INTO employees (matricula, name, function, company, team_id) VALUES ($1,$2,$3,$4,$5)',
-        [m, n, f, 'ENGECOM', teamId]
-      );
+  const emp = async (list, team_id) => {
+    for (const [matricula, name, fn] of list)
+      await sq(supabase.from('employees')
+        .insert({ matricula, name, function: fn, company: 'ENGECOM', team_id }));
   };
 
   await emp([
@@ -216,4 +149,4 @@ async function initDB() {
   ], mT3);
 }
 
-module.exports = { pool, initDB };
+module.exports = { supabase, sq, initDB };
