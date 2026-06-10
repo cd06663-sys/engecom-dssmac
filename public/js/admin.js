@@ -612,6 +612,23 @@ async function renderLinks() {
     <div class="page-header">
       <h2><i class="bi bi-link-45deg me-2"></i>Links das Equipes</h2>
     </div>
+    <div class="alert d-flex align-items-center gap-3 mb-4"
+         style="background:#e8f0fe;border:1px solid #b8d0fb;border-radius:12px;padding:16px 20px;">
+      <i class="bi bi-android2" style="font-size:28px;color:#1a3a6b;flex-shrink:0;"></i>
+      <div>
+        <div class="fw-bold" style="color:#1a2a45;">App Android</div>
+        <div class="text-muted small">Envie este link para os colaboradores instalarem o app no celular</div>
+        <div class="mt-2 d-flex gap-2 flex-wrap">
+          <span class="text-muted small" id="appLinkText">${window.location.origin}/app</span>
+          <button class="btn btn-sm btn-primary" onclick="copyLink('${window.location.origin}/app', this)">
+            <i class="bi bi-clipboard"></i> Copiar link do app
+          </button>
+          <a href="/app" target="_blank" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-box-arrow-up-right"></i> Abrir
+          </a>
+        </div>
+      </div>
+    </div>
     <p class="text-muted mb-4">Copie o link e envie para cada equipe. Elas poderão baixar as listas e enviar as fotos.</p>
     ${S.districts.map(d => {
       const teams = grouped[d.id]?.teams || [];
