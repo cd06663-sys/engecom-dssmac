@@ -28,10 +28,13 @@ jobs:
           unzip -q /tmp/gradle.zip -d /opt/gradle
           echo "/opt/gradle/gradle-8.4/bin" >> $GITHUB_PATH
 
+      - name: Accept Android SDK licenses
+        run: yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
       - name: Build debug APK
         working-directory: android
         run: |
-          echo "sdk.dir=${{ env.ANDROID_SDK_ROOT }}" > local.properties
+          echo "sdk.dir=/usr/local/lib/android/sdk" > local.properties
           gradle assembleDebug
 
       - name: Upload APK
