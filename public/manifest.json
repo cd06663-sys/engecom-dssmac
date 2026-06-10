@@ -1,0 +1,16 @@
+{
+  "name": "ENGECOM DSSMAC",
+  "short_name": "DSSMAC",
+  "description": "Portal de envio de listas de frequência DSSMAC",
+  "start_url": "/equipe/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#1a3a6b",
+  "theme_color": "#1a3a6b",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/img/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/logo.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
