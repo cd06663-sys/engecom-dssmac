@@ -161,6 +161,12 @@ app.use(express.json());
 app.get(['/', '/index.html'], (_, res) =>
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 );
+app.get('/equipe', (_, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'selecionar.html'))
+);
+app.get('/selecionar', (_, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'selecionar.html'))
+);
 app.get('/equipe/:teamId', (_, res) =>
   res.sendFile(path.join(__dirname, 'public', 'equipe.html'))
 );
