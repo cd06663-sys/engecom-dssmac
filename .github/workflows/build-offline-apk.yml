@@ -1,0 +1,89 @@
+name: Build Offline APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'android-offline/**'
+      - '.github/workflows/build-offline-apk.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Install Android SDK components
+        run: |
+          yes | /usr/local/lib/android/sdk/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" "build-tools;35.0.0" || true
+
+      - name: Build APK
+        run: |
+          SDK=/usr/local/lib/android/sdk
+          BT=$SDK/build-tools/35.0.0
+          PLATFORM=$SDK/platforms/android-35/android.jar
+          PROJECT=android-offline
+          BUILD=build_native
+
+          mkdir -p $BUILD/gen $BUILD/classes $BUILD/dex
+
+          # Compile resources
+          $BT/aapt2 compile --dir $PROJECT/res -o $BUILD/resources.zip
+          $BT/aapt2 link -o $BUILD/app-unsigned.apk \
+            -I $PLATFORM \
+            --manifest $PROJECT/AndroidManifest.xml \
+            --java $BUILD/gen \
+            --min-sdk-version 23 \
+            --target-sdk-version 35 \
+            $BUILD/resources.zip
+
+          # Compile Java
+          find $PROJECT/src -name "*.java" > $BUILD/sources.txt
+          find $BUILD/gen -name "*.java" >> $BUILD/sources.txt
+          javac -encoding UTF-8 -source 1.8 -target 1.8 \
+            -classpath $PLATFORM \
+            -d $BUILD/classes \
+            @$BUILD/sources.txt
+
+          # Dex
+          find $BUILD/classes -name "*.class" > $BUILD/classes.txt
+          $BT/d8 --min-api 23 --lib $PLATFORM \
+            --output $BUILD/dex \
+            $(cat $BUILD/classes.txt)
+
+          # Add dex to APK
+          cp $BUILD/app-unsigned.apk $BUILD/app-dex.apk
+          (cd $BUILD/dex && zip -j $GITHUB_WORKSPACE/$BUILD/app-dex.apk classes.dex)
+
+          # Align
+          $BT/zipalign -f -p 4 $BUILD/app-dex.apk $BUILD/app-aligned.apk
+
+          # Sign
+          $BT/apksigner sign \
+            --ks $PROJECT/debug.keystore \
+            --ks-key-alias androiddebugkey \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out $BUILD/engecom-dssmac.apk \
+            $BUILD/app-aligned.apk
+
+          $BT/apksigner verify --verbose $BUILD/engecom-dssmac.apk
+          echo "APK gerado com sucesso"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ENGECOM-DSSMAC-offline
+          path: build_native/engecom-dssmac.apk
+          retention-days: 90
+          if-no-files-found: error
