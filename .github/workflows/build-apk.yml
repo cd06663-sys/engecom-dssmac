@@ -30,9 +30,9 @@ jobs:
 
       - name: Build debug APK
         working-directory: android
-        run: gradle assembleDebug
-        env:
-          ANDROID_HOME: ${{ env.ANDROID_SDK_ROOT }}
+        run: |
+          echo "sdk.dir=${{ env.ANDROID_SDK_ROOT }}" > local.properties
+          gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
